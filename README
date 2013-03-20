@@ -1,0 +1,44 @@
+udesk: The Unix Desktop Environment API
+=======================================
+
+udesk is a simple OpenGL inspired specification to
+interact with a desktop environment in an implementation
+agnostic way.
+
+Currently many GUI toolkits are available for Unix-like systems,
+they all provide similar features, but it is impossible to
+develop in a simple and toolkit or desktop environment
+independent way, without resorting to additional libraries,
+dependencies or wrappers. There is no simple way to be desktop
+environment independent, while taking advantage of modern
+features that desktop environments have to offer.
+
+This specification tries to create a desktop and toolkit agnostic
+API that could easily be implemented by different toolkits to
+provide a common desktop independent standard.
+The API has the following objectives:
+* Use the C language for the specification, any
+  other language can be supported via language bindings.
+* Keeping an approach closely similar to OpenGL, so that
+  developers can feel familiar with the API.
+* Be minimal, the specification must not require external
+  dependencies other than standard C, although the implementation
+  itself may depend on whatever library or software is felt necessary.
+* The required features must not be redundant or unnecessary, the
+  core specification must be clean and easy to implement.
+* The implementation must be able to provide additional features,
+  to expose extended functionality to the developer, whenever it is
+  supposed to be useful, such features could become core standard in
+  the future.
+* The specification should be able to evolve without breaking
+  backward compatibility in the future, the applications
+  must not need to recompile on newer specification release or
+  on newer implementation release.
+* The specification doesn't require a toolkit to be the implementation,
+  small desktop environments or even window managers should be
+  able to implement it.
+* The specification shouldn't aim to replace toolkits, a desktop environment
+  is free to provide the implementation and keep using the preferred
+  toolkit for desktop environment specific applications.
+
+See LICENSE and AUTHORS for license and author details.
