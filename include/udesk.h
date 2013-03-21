@@ -518,7 +518,7 @@ UDESKAPI void UDESKAPIENTRY udeskFlush(UDhandle handle);
  *
  * UDESK_INVALID_VALUE: `num' is < 0 or `buff' is NULL.
  */
-UDESKAPI void UDESKAPIENTRY udeskDeleteObjects(UDint num, UDhandle* buff);
+UDESKAPI void UDESKAPIENTRY udeskDeleteObjects(UDint num, const UDhandle* buff);
 
 /* ==========
  * Window objects
