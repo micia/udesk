@@ -55,7 +55,9 @@ static DanteObject* dante_cache_free = NULL;
 
 /* Walks the slice list finding the first empty slot, a new
  * slice is allocated into it, inizialized and returned.
- * If allocation fails an appropriate error is set into the context.
+ * No error is set on allocation failure (which can only happen
+ * on UDESK_OUT_OF_MEMORY condition), this is in order to allow
+ * silent memory allocation failures.
  */
 static DanteSlice* danteAllocSlice(void)
 {
@@ -200,6 +202,20 @@ void danteFreeObject(DanteObject* obj)
 		obj->d.none.next = dante_cache_free;
 		dante_cache_free = obj;
 	}
+}
+
+UDboolean udeskCheckObjectType(UDhandle handle, UDenum type)
+{
+	DanteObject* obj;
+	
+	DANTE_IGNORE_AND_RETVAL_IF(!dante_context, false);
+	
+	obj = danteGetObject(handle);
+	if (!obj) {
+		return false;
+	}
+	
+	return obj->type == type;
 }
 
 UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
