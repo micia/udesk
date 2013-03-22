@@ -70,8 +70,7 @@ extern "C" {
 #undef __bool_true_false_are_defined
 #endif
 
-typedef UDboolean _Bool
-#define bool _Bool
+#define bool UDboolean;
 #define true 1
 #define false 0
 #define __bool_true_false_are_defined 1
@@ -79,6 +78,14 @@ typedef UDboolean _Bool
 #endif /* __cplusplus */
 
 #endif
+
+/* Empty (freed) object type. */
+typedef struct DanteNoneObject_s {
+	/* next free object in the same slice, used for the free
+	 * object list in the slice.
+	 */
+	struct DanteObject_s* next;
+} DanteNoneObject;
 
 /* Generic object type, it holds any information necessary to
  * identify and manage a generic object, as well as any object
