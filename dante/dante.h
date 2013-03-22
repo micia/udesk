@@ -35,6 +35,7 @@
 #define DANTE_H_
 #include <udesk/udesk.h>
 #include <SDL.h>
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,13 +46,39 @@ extern "C" {
 #error Please specify a VERSION string
 #endif
 
-/* Empty (freed) object type. */
-typedef struct DanteNoneObject_s {
-	/* next free object in the same slice, used for the free
-	 * object list in the slice.
-	 */
-	struct DanteObject_s* next;
-} DanteNoneObject;
+/* perform some paranoid checks for STDC and byte width */
+#ifndef __STDC__
+#error ANSI C89 capable compiler is required
+#endif
+#if (CHAR_BIT != 8)
+#error This code assumes 8 bit bytes
+#endif
+
+/* ensure a C99 compatible set of boolean types. */
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+/* use stdbool.h for true and false */
+#include <stdbool.h>
+
+#else
+/* hand craft a stdbool.h compatible definition, we use FDboolean for bool */
+#ifndef __cplusplus
+
+#ifdef bool
+#undef bool
+#endif
+#ifdef __bool_true_false_are_defined
+#undef __bool_true_false_are_defined
+#endif
+
+typedef FDboolean _Bool
+#define bool _Bool
+#define true 1
+#define false 0
+#define __bool_true_false_are_defined 1
+
+#endif /* __cplusplus */
+
+#endif
 
 /* Generic object type, it holds any information necessary to
  * identify and manage a generic object, as well as any object
