@@ -1,0 +1,6 @@
+dante - The udesk SDL implementation
+====================================
+
+Dante is a reference implementation of the udesk API.
+It provides a core implementation with some example
+extensions having SDL as its sole dependency.
