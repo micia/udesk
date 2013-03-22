@@ -70,7 +70,7 @@ extern "C" {
 #undef __bool_true_false_are_defined
 #endif
 
-typedef FDboolean _Bool
+typedef UDboolean _Bool
 #define bool _Bool
 #define true 1
 #define false 0
@@ -204,6 +204,13 @@ DanteObject* danteAllocObject(UDenum type);
  * invalid.
  */
 DanteObject* danteGetObject(UDhandle handle);
+/* Ensures that the object specified by 'handle' has type 'type',
+ * if the context hasn't been yet created, it returns false,
+ * it also returns false on invalid handle value.
+ * This function is intended as a convenience function to
+ * implement the udeskIs'type'('handle') function family.
+ */ 
+UDboolean danteCheckObjectType(UDhandle handle, UDenum type);
 /* Frees the object 'obj', making it unusable.
  * If 'obj' is NULL effect is undefined.
  */
