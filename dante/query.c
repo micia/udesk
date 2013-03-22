@@ -1,6 +1,6 @@
 /* query.c: Context-less queries.
  *
- * This file implements context-less queries for eztensions or
+ * This file implements context-less queries for extensions or
  * implementation features and identification.
  *
  * Copyright (C) 2012-2013 Lorenzo Cogotti
