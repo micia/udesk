@@ -72,5 +72,7 @@ UDenum UDESKAPIENTRY udeskQueryiv(UDenum param, UDint* dst)
 
 const char* UDESKAPIENTRY udeskQueryExtension(UDint extnum)
 {
+	(void)extnum;
+	
 	return NULL;
 }
