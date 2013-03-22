@@ -245,6 +245,7 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 	dante_cache_free = NULL;
 	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
 		dante_fast_cache[i].type = UDESK_NONE;
+		dante_fast_cache[i].slice = NULL;
 		dante_fast_cache[i].d.none.next = dante_cache_free;
 		dante_cache_free = &dante_fast_cache[i];
 	}
@@ -305,10 +306,11 @@ UDenum UDESKAPIENTRY udeskGetError(void)
 
 UDenum UDESKAPIENTRY udeskDestroyContext(void)
 {	
+	UDint i;
+	
 	DANTE_IGNORE_AND_RETVAL_IF(!dante_context, UDESK_INVALID_OPERATION);
 	
 	while (dante_context->slice.next->base != UDESK_HANDLE_NONE) {
-		UDint i;
 		DanteSlice* slice;
 		
 		slice = dante_context->slice.next;
@@ -323,7 +325,16 @@ UDenum UDESKAPIENTRY udeskDestroyContext(void)
 		/* slice is freed when empty */
 	}
 	
+	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
+		DanteObject* obj = &dante_fast_cache[i];
+		
+		if (obj->type != UDESK_NONE) {
+			danteFreeObject(obj);
+		}
+	}
+	
 	free(dante_context);
 	dante_context = NULL;
+	dante_cache_free = NULL;
 	return UDESK_NO_ERROR;
 }
