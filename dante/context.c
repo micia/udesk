@@ -33,7 +33,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Defines how many slots should be reserved for fast static
+ * objects cache.
+ */
+#define DANTE_FAST_OBJECT_CACHE_SIZE 128
+
 DanteContext* dante_context = NULL;
+
+/* This is the fast static cache buffer used for frequently
+ * generated and deleted objects, such as events.
+ * Handles are managed in the following way:
+ * 
+ * [1, DANTE_FAST_OBJECT_CACHE_SIZE] = static objects, have NULL slice field
+ * [DANTE_FAST_OBJECT_CACHE_SIZE, ...] = slice memory allocation.
+ */
+static DanteObject dante_fast_cache[DANTE_FAST_OBJECT_CACHE_SIZE];
+/* Free static object cache list, if empty even frequently generated
+ * object will fall back to slice memory.
+ */
+static DanteObject* dante_cache_free = NULL;
 
 /* Walks the slice list finding the first empty slot, a new
  * slice is allocated into it, inizialized and returned.
@@ -54,7 +72,7 @@ static DanteSlice* danteAllocSlice(void)
 	
 	prev = &dante_context->slice;
 	next = dante_context->slice.next;
-	base = 1;
+	base = DANTE_FAST_OBJECT_CACHE_SIZE + 1;
 	while (next->base != UDESK_HANDLE_NONE) {
 		if (next->base != base) {
 			break;
@@ -93,25 +111,36 @@ static DanteSlice* danteAllocSlice(void)
 
 DanteObject* danteAllocObject(UDenum type)
 {
-	DanteSlice* slice;
-	DanteObject* obj;
-	
-	slice = dante_context->slice.next_free;
-	if (!slice) {
-		/* no free slices left, allocate a new one */
-		slice = danteAllocSlice();
-		if (!slice) {
-			return NULL;
+	DanteObject* obj = NULL;
+
+	if (type == UDESK_HANDLE_EVENT) {
+		/* try to allocate into fast cache */
+		obj = dante_cache_free;
+		if (obj) {
+			dante_cache_free = obj->d.none.next;
 		}
 	}
 	
-	obj = slice->first_free;
-	slice->first_free = obj->d.none.next;
-	slice->used++;
-	if (slice->used == DANTE_SLICE_SIZE) {
-		/* slice is full, remove from free list */
-		dante_context->slice.next_free = slice->next_free;
-		dante_context->slice.prev_free = slice->prev_free;
+	if (!obj) {
+		/* allocate into slice managed memory */
+		DanteSlice* slice = dante_context->slice.next_free;
+		
+		if (!slice) {
+			/* no free slices left, allocate a new one */
+			slice = danteAllocSlice();
+			if (!slice) {
+				return NULL;
+			}
+		}
+		
+		obj = slice->first_free;
+		slice->first_free = obj->d.none.next;
+		slice->used++;
+		if (slice->used == DANTE_SLICE_SIZE) {
+			/* slice is full, remove from free list */
+			dante_context->slice.next_free = slice->next_free;
+			dante_context->slice.prev_free = slice->prev_free;
+		}
 	}
 	
 	obj->type = type;
@@ -120,19 +149,32 @@ DanteObject* danteAllocObject(UDenum type)
 
 DanteObject* danteGetObject(UDhandle handle)
 {
-	DanteSlice* slice;
-	
-	for (slice = dante_context->slice.next; slice->base != UDESK_HANDLE_NONE; slice = slice->next) {
-		if (handle < slice->base + DANTE_SLICE_SIZE) {
-			break;
-		}
-	}
-	
-	if (slice->base == UDESK_HANDLE_NONE || handle < slice->base) {
+	if (handle <= 0) {
 		return NULL;
 	}
 	
-	return &slice->data[handle - slice->base];
+	if (handle > DANTE_FAST_OBJECT_CACHE_SIZE) {
+		/* search into the slice managed memory */
+		DanteSlice* slice;
+	
+		for (slice = dante_context->slice.next; slice->base != UDESK_HANDLE_NONE; slice = slice->next) {
+			if (handle < slice->base + DANTE_SLICE_SIZE) {
+				break;
+			}
+		}
+		
+		if (slice->base == UDESK_HANDLE_NONE || handle < slice->base) {
+			return NULL;
+		}
+		
+		return &slice->data[handle - slice->base];
+		
+	} else {
+		/* object belongs to the fast cache */
+		DanteObject* obj = &dante_fast_cache[handle - 1];
+		
+		return (obj->type != UDESK_NONE)? obj : NULL;
+	}
 }
 
 void danteFreeObject(DanteObject* obj)
@@ -140,22 +182,30 @@ void danteFreeObject(DanteObject* obj)
 	DanteSlice* slice = obj->slice;
 	
 	obj->type = UDESK_NONE;
-	obj->d.none.next = slice->first_free;
-	slice->first_free = obj;
-	slice->used--;
-	if (slice->used == 0) {
-		/* free the slice, give back memory to the OS */
-		slice->next_free->prev_free = slice->prev_free;
-		slice->prev_free->next_free = slice->next_free;
-		slice->next->prev = slice->prev;
-		slice->prev->next = slice->next;
-		free(slice);
+	if (slice) {
+		/* object belongs to slice managed memory */
+		obj->d.none.next = slice->first_free;
+		slice->first_free = obj;
+		slice->used--;
+		if (slice->used == 0) {
+			/* free the slice, give back memory to the OS */
+			slice->next_free->prev_free = slice->prev_free;
+			slice->prev_free->next_free = slice->next_free;
+			slice->next->prev = slice->prev;
+			slice->prev->next = slice->next;
+			free(slice);
+		}
+	} else {
+		/* object belongs to static fast cache */
+		obj->d.none.next = dante_cache_free;
+		dante_cache_free = obj;
 	}
 }
 
 UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 {
 	DanteContext* ctx;
+	UDint i;
 	
 	DANTE_IGNORE_AND_RETVAL_IF(!argc || !argv || *argc <= 0 || !*argv[0], UDESK_INVALID_VALUE);
 	DANTE_IGNORE_AND_RETVAL_IF(dante_context, UDESK_INVALID_OPERATION);
@@ -165,6 +215,7 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 		return UDESK_OUT_OF_MEMORY;
 	}
 	
+	/* initialize context */
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->error = UDESK_NO_ERROR;
 	ctx->slice.base = UDESK_HANDLE_NONE;
@@ -173,6 +224,14 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 	ctx->slice.prev = &ctx->slice;
 	ctx->slice.next_free = &ctx->slice;
 	ctx->slice.prev_free = &ctx->slice;
+	
+	/* initialize the fast cache */
+	dante_cache_free = NULL;
+	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
+		dante_fast_cache[i].type = UDESK_NONE;
+		dante_fast_cache[i].d.none.next = dante_cache_free;
+		dante_cache_free = &dante_fast_cache[i];
+	}
 	
 	dante_context = ctx;
 	return UDESK_NO_ERROR;
