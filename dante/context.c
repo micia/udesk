@@ -39,6 +39,15 @@ DanteContext* dante_context = NULL;
  * if the environment variable has an invalid value or can't be found,
  * the default value is returned.
  */
+static UDboolean danteGetEnvVariable(const char* name, UDboolean defval);
+/* Walks the slice list finding the first empty slot, a new
+ * slice is allocated into it, inizialized and returned.
+ * No error is set on allocation failure (which can only happen
+ * on UDESK_OUT_OF_MEMORY condition), this is in order to allow
+ * silent memory allocation failures.
+ */
+static DanteSlice* danteAllocSlice(void);
+
 static UDboolean danteGetEnvVariable(const char* name, UDboolean defval)
 {
 	char* var = getenv(name);
@@ -55,12 +64,6 @@ static UDboolean danteGetEnvVariable(const char* name, UDboolean defval)
 	return defval;
 }
 
-/* Walks the slice list finding the first empty slot, a new
- * slice is allocated into it, inizialized and returned.
- * No error is set on allocation failure (which can only happen
- * on UDESK_OUT_OF_MEMORY condition), this is in order to allow
- * silent memory allocation failures.
- */
 static DanteSlice* danteAllocSlice(void)
 {
 	DanteSlice* prev;
@@ -116,7 +119,7 @@ static DanteSlice* danteAllocSlice(void)
 	return ret;
 }
 
-DanteObject* danteAllocObject(UDenum type)
+DanteObject* DANTEAPIENTRY danteAllocObject(UDenum type)
 {
 	DanteObject* obj = NULL;
 	
@@ -160,7 +163,7 @@ DanteObject* danteAllocObject(UDenum type)
 	return obj;
 }
 
-DanteObject* danteGetObject(UDhandle handle)
+DanteObject* DANTEAPIENTRY danteGetObject(UDhandle handle)
 {	
 	DanteObject* obj;
 
@@ -192,7 +195,7 @@ DanteObject* danteGetObject(UDhandle handle)
 	return (obj->type != UDESK_NONE)? obj : NULL;
 }
 
-UDboolean danteCheckObjectType(UDhandle handle, UDenum type)
+UDboolean DANTEAPIENTRY danteCheckObjectType(UDhandle handle, UDenum type)
 {
 	DanteObject* obj;
 	
@@ -206,7 +209,7 @@ UDboolean danteCheckObjectType(UDhandle handle, UDenum type)
 	return (obj->type == type);
 }
 
-DanteObject* danteRetrieveObject(UDhandle handle, UDenum type)
+DanteObject* DANTEAPIENTRY danteRetrieveObject(UDhandle handle, UDenum type)
 {
 	DanteObject* obj;
 	
@@ -218,14 +221,14 @@ DanteObject* danteRetrieveObject(UDhandle handle, UDenum type)
 	return obj;
 }
 
-void danteRefObject(DanteObject* obj)
+void DANTEAPIENTRY danteRefObject(DanteObject* obj)
 {
 	if (obj) {
 		obj->refs++;
 	}
 }
 
-void danteUnrefObject(DanteObject* obj)
+void DANTEAPIENTRY danteUnrefObject(DanteObject* obj)
 {
 	if (obj) {
 		obj->refs--;

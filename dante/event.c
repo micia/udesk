@@ -34,6 +34,13 @@
  * doesn't provide a timestamp into the common event structure,
  * this is done with a switch.
  */
+static UDint danteGetEventTimestamp(const SDL_Event* ev);
+/* Event virtual table handlers. */
+static void danteEventBegin(DanteObject* self, UDenum type);
+static void danteEventEnd(DanteObject* obj);
+static void danteEventFlush(DanteObject* obj);
+static void danteEventClear(DanteObject* self);
+
 static UDint danteGetEventTimestamp(const SDL_Event* ev)
 {
 	Uint32 stamp;
@@ -168,7 +175,7 @@ static void danteEventClear(DanteObject* self)
 	}
 }
 
-void danteGenerateFrom(const SDL_Event* sev, UDenum type)
+void DANTEAPIENTRY danteGenerateFrom(const SDL_Event* sev, UDenum type)
 { 
 	DanteObject* obj;
 	
@@ -186,7 +193,7 @@ void danteGenerateFrom(const SDL_Event* sev, UDenum type)
 	dante_context->ev = obj;
 }
 
-void dantePropagateEvent(DanteDispatchID id, DanteObject* from, DanteObject* to)
+void DANTEAPIENTRY dantePropagateEvent(DanteDispatchID id, DanteObject* from, DanteObject* to)
 {
 	DanteObject* obj = dante_context->ev;
 	
@@ -205,14 +212,14 @@ void dantePropagateEvent(DanteDispatchID id, DanteObject* from, DanteObject* to)
 	}
 }
 
-void danteFinishEvent(void) {
+void DANTEAPIENTRY danteFinishEvent(void) {
 	if (dante_context->ev) {
 		danteUnrefObject(dante_context->ev);
 		dante_context->ev = NULL;
 	}
 }
 
-void danteHandleWindowEvent(const SDL_Event* ev)
+void DANTEAPIENTRY danteHandleWindowEvent(const SDL_Event* ev)
 {
 	const SDL_WindowEvent* wev;
 	DanteObject* to;
@@ -263,7 +270,7 @@ void danteHandleWindowEvent(const SDL_Event* ev)
 	danteFinishEvent();
 }
 
-UDboolean danteEventInit(DanteObject* obj)
+UDboolean DANTEAPIENTRY danteEventInit(DanteObject* obj)
 {
 	static const DanteVTable ev_table = {
 		NULL,

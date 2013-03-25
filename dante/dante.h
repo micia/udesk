@@ -80,6 +80,16 @@ extern "C" {
 
 #endif
 
+#if (defined(__GNUC__) && __GNUC__ >= 4)
+/* optimize generated DLL by reducing the exported functions */
+#define DANTEAPI extern __attribute__((visibility("hidden")))
+#else
+#define DANTEAPI extern
+#endif
+
+/* compatibility with udesk style declarations */
+#define DANTEAPIENTRY
+
 /* VSync environment variable name that defines whether Dante
  * should enable vsync (if possible).
  */
@@ -345,7 +355,7 @@ typedef struct DanteContext_s {
 /* Global dante context handle, NULL if no context has been
  * created yet.
  */
-extern DanteContext* dante_context;
+DANTEAPI DanteContext* dante_context;
 
 /* convenience macros */
 
@@ -387,19 +397,20 @@ extern DanteContext* dante_context;
  * it on success, it returns NULL on out of memory condition.
  * No check is performed to ensure that the required type is legal,
  * this is left to the caller.
+ * A newly allocated object has a reference count of one.
  */
-DanteObject* danteAllocObject(UDenum type);
+DANTEAPI DanteObject* DANTEAPIENTRY danteAllocObject(UDenum type);
 /* Returns the object identified by handle, NULL if handle is
  * invalid.
  */
-DanteObject* danteGetObject(UDhandle handle);
+DANTEAPI DanteObject* DANTEAPIENTRY danteGetObject(UDhandle handle);
 /* Ensures that the object specified by 'handle' has type 'type',
  * if the context hasn't been yet created, it returns false,
  * it also returns false on invalid handle value.
  * This function is intended as a convenience function to
  * implement the udeskIs'type'('handle') function family.
  */ 
-UDboolean danteCheckObjectType(UDhandle handle, UDenum type);
+DANTEAPI UDboolean DANTEAPIENTRY danteCheckObjectType(UDhandle handle, UDenum type);
 /* Retrieves an object of a specific type from 'handle', returning
  * it on success, it returns NULL on non-existing udesk context,
  * invalid handle or invalid object type, setting an appropriate error
@@ -407,35 +418,62 @@ UDboolean danteCheckObjectType(UDhandle handle, UDenum type);
  * This function is intended to reduce the number of check operations
  * necessary for every object specific function in udesk.
  */
-DanteObject* danteRetrieveObject(UDhandle handle, UDenum type);
-void danteRefObject(DanteObject* obj);
-void danteUnrefObject(DanteObject* obj);
+DANTEAPI DanteObject* DANTEAPIENTRY danteRetrieveObject(UDhandle handle, UDenum type);
+/* Adds a reference to the specified object, if 'obj' is NULL this
+ * function has no effect.
+ */
+DANTEAPI void DANTEAPIENTRY danteRefObject(DanteObject* obj);
+/* Decreases reference count for the specified object, if 'obj' is NULL
+ * this function has no effect.
+ * Once the reference count reaches zero, the object is deallocated
+ * and becomes invalid.
+ */
+DANTEAPI void DANTEAPIENTRY danteUnrefObject(DanteObject* obj);
 
 /* Handles the specified SDL event.
  * If 'ev' is NULL effect is undefined.
  */
-void danteHandleWindowEvent(const SDL_Event* ev);
-void danteGenerateFrom(const SDL_Event* sev, UDenum type);
-void dantePropagateEvent(DanteDispatchID id, DanteObject* from, DanteObject* to);
-void danteFinishEvent(void);
+DANTEAPI void DANTEAPIENTRY danteHandleWindowEvent(const SDL_Event* ev);
+/* Generates a dante event from an existing SDL event of the udesk type 'type'.
+ * The SDL event must not be NULL and the type must be correct, such
+ * requirements must be met by the caller.
+ * SDL event data is copied into the new event.
+ * The newly allocated event becomes the current context event, subsequent
+ * current event related functions will implicitly reference it, if
+ * the event allocation failed, the current event is set to NULL and
+ * subsequent event propagation requests are silently ignored.
+ */
+DANTEAPI void DANTEAPIENTRY danteGenerateFrom(const SDL_Event* sev, UDenum type);
+/* Propagates the current context event to a new object, the event
+ * is propagated from the 'from' object to the 'to' object, system
+ * generated events typically have a NULL 'from' object, also the 'from'
+ * field is unlikely to change during event propagation.
+ * The dispatch identifier is used to resolve event handler routine and
+ * must be retrieved from the original SDL event.
+ */
+DANTEAPI void DANTEAPIENTRY dantePropagateEvent(DanteDispatchID id, DanteObject* from, DanteObject* to);
+/* Finalizes event propagation (if necessary) and resets the current
+ * context event to NULL.
+ */
+DANTEAPI void DANTEAPIENTRY danteFinishEvent(void);
 /* Initializes an UDESK_HANDLE_EVENT object and
  * registers its virtual table.
  * It returns true on success, false otherwise,
  * a context error is set appropriately on failure.
  */
-UDboolean danteEventInit(DanteObject* obj);
+DANTEAPI UDboolean DANTEAPIENTRY danteEventInit(DanteObject* obj);
 
 /* Initializes an UDESK_HANDLE_WINDOW object and
  * registers its virtual table.
  * It returns true on success, false otherwise,
  * a context error is set appropriately on failure.
  */
-UDboolean danteWindowInit(DanteObject* obj);
+DANTEAPI UDboolean DANTEAPIENTRY danteWindowInit(DanteObject* obj);
 /* Retrieves a window object from a SDL window identifier,
  * it returns NULL if the SDL window identifier isn't valid or
  * if it doesn't have a dante object attached to it.
  */
-DanteObject* danteGetObjectFromWindowID(Uint32 id);
+DANTEAPI DanteObject* DANTEAPIENTRY danteGetObjectFromWindowID(Uint32 id);
 
 #ifdef __cplusplus
 }

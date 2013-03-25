@@ -39,13 +39,28 @@
 /* default window height. */
 #define DANTE_WINDOW_HEIGHT 240
 
-static void danteWindowFlush(DanteObject* obj);
-	
 /* Creates a window renderer, according to the current context.
  * If context requires vsync but it could not be obtained, a
  * renderer with no vertical sync is created.
  * It returns NULL if creation was unsuccessful.
  */
+static SDL_Renderer* danteCreateWindowRenderer(SDL_Window* window);
+/* Maps the window as specified by the 'mode' parameter,
+ * sets the context error accordingly on failure or invalid mode.
+ */
+static void danteSetWindowMode(SDL_Window* win, UDenum mode);
+/* Window event dispatch table handlers. */
+static void danteWindowEnterHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
+static void danteWindowLeaveHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
+static void danteWindowFocusHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
+static void danteWindowDrawHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
+static void danteWindowMotionHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
+static void danteWindowDestroyHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
+/* Window virtual table handlers. */
+static void danteWindowRegisterHandler(DanteObject* obj, UDenum param, UDhandlerproc proc);
+static void danteWindowFlush(DanteObject* obj);
+static void danteWindowClear(DanteObject* obj);
+
 static SDL_Renderer* danteCreateWindowRenderer(SDL_Window* window)
 {
 	SDL_Renderer* ret;
@@ -73,9 +88,6 @@ static SDL_Renderer* danteCreateWindowRenderer(SDL_Window* window)
 	return ret;
 }
 
-/* Maps the window as specified by the 'mode' parameter,
- * sets the context error accordingly on failure or invalid mode.
- */
 static void danteSetWindowMode(SDL_Window* win, UDenum mode)
 {
 	switch (mode) {
@@ -133,7 +145,6 @@ static void danteWindowFocusHandler(DanteObject* obj, DanteDispatchID id, DanteO
 	/* TODO: stub */
 }
 
-/* Default window draw event handler procedure. */
 static void danteWindowDrawHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev)
 {	
 	DanteWindowObject* win = &obj->d.win;
@@ -206,7 +217,6 @@ static void danteWindowFlush(DanteObject* obj)
 	SDL_RenderPresent(obj->d.win.render);
 }
 
-/* Window vtable clear function. */
 static void danteWindowClear(DanteObject* obj)
 {
 	DanteWindowObject* win = &obj->d.win;
@@ -217,7 +227,7 @@ static void danteWindowClear(DanteObject* obj)
 	SDL_DestroyWindow(win->sdl_rc);
 }
 
-UDboolean danteWindowInit(DanteObject* obj)
+UDboolean DANTEAPIENTRY danteWindowInit(DanteObject* obj)
 {
 	static const DanteVTable win_table = {
 		danteWindowRegisterHandler,
@@ -277,7 +287,7 @@ fail:
 	return false;
 }
 
-DanteObject* danteGetObjectFromWindowID(Uint32 id)
+DanteObject* DANTEAPIENTRY danteGetObjectFromWindowID(Uint32 id)
 {
 	SDL_Window* win = SDL_GetWindowFromID(id);
 	
@@ -388,4 +398,3 @@ UDboolean UDESKAPIENTRY udeskIsWindow(UDhandle handle)
 {
 	return danteCheckObjectType(handle, UDESK_HANDLE_WINDOW);
 }
-
