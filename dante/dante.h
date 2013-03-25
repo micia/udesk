@@ -71,7 +71,7 @@ extern "C" {
 #undef __bool_true_false_are_defined
 #endif
 
-#define bool UDboolean;
+#define bool UDboolean
 #define true 1
 #define false 0
 #define __bool_true_false_are_defined 1
@@ -275,7 +275,7 @@ typedef struct DanteObject_s {
  */
 typedef struct DanteSlice_s {
 	/* base handle value, handles in this slice range in the interval:
-	 * [base, base + DANTE_SLICE_SIZE)
+	 * [base, base + DANTE_SLICE_CACHESIZE)
 	 */
 	UDhandle base;
 	/* how many objects in this slice are being used, if 0 then
@@ -430,8 +430,9 @@ DANTEAPI void DANTEAPIENTRY danteRefObject(DanteObject* obj);
  */
 DANTEAPI void DANTEAPIENTRY danteUnrefObject(DanteObject* obj);
 
-/* Handles the specified SDL event.
- * If 'ev' is NULL effect is undefined.
+/* Handles the specified SDL window event.
+ * The SDL 'ev' type must be SDL_WINDOWEVENT, if 'ev' is NULL effects are
+ * undefined.
  */
 DANTEAPI void DANTEAPIENTRY danteHandleWindowEvent(const SDL_Event* ev);
 /* Generates a dante event from an existing SDL event of the udesk type 'type'.
