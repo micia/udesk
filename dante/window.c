@@ -90,7 +90,6 @@ static void danteSetWindowMode(SDL_Window* win, UDenum mode)
 	
 	case UDESK_WINDOW_SHOW:
 		SDL_ShowWindow(win);
-		SDL_ShowWindow(win);
 		break;
 	
 	case UDESK_WINDOW_MAXIMIZED:
