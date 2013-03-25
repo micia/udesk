@@ -217,8 +217,6 @@ static void danteWindowClear(DanteObject* obj)
 	SDL_DestroyWindow(win->sdl_rc);
 }
 
-#include <stdio.h>
-
 UDboolean danteWindowInit(DanteObject* obj)
 {
 	static const DanteVTable win_table = {
