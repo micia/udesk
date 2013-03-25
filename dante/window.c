@@ -250,7 +250,6 @@ UDboolean danteWindowInit(DanteObject* obj)
 		goto fail;
 	}
 	
-	SDL_HideWindow(swin);
 	render = danteCreateWindowRenderer(swin);
 	if (!render) {
 		dante_context->error = UDESK_OPERATION_FAILED;
