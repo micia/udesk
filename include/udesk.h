@@ -252,7 +252,7 @@ UDESKAPI void UDESKAPIENTRY udeskMakeContextNone(void);
  * that it is safe to use or call, ensure that an extension is present,
  * or the library version is the expected one before making use of it.
  */
-UDESKAPI void (UDESKAPIENTRYP udeskGetProcAddress(const char* name))(void) UDESKAPIENTRY;
+UDESKAPI void (UDESKAPIENTRY UDESKAPIENTRYP udeskGetProcAddress(const char* name))(void);
 
 /* Destroys the existing context, closing any window
  * belonging to the context and freeing any resource.
@@ -572,16 +572,19 @@ enum {
    */
   UDESK_WINDOW_RESIZE = 0x0303,
 #define UDESK_WINDOW_RESIZE    UDESK_WINDOW_RESIZE
+  
+  /* Window mapping mode, it is a symbolic constant,
+   * defines how the window is mapped on screen.
+   */
+  UDESK_WINDOW_MODE = 0x0304,
+#define UDESK_WINDOW_MODE      UDESK_WINDOW_MODE
 
   /* Hidden window mode, the window is not shown to
    * the user at all, this is the default mode, to allow
    * window setup without ugly artifacts.
    */
-  UDESK_WINDOW_HIDDEN = 0x0304,
+  UDESK_WINDOW_HIDDEN = 0x0305,
 #define UDESK_WINDOW_HIDDEN    UDESK_WINDOW_HIDDEN
-
-  UDESK_WINDOW_MODE = 0x0305,
-#define UDESK_WINDOW_MODE      UDESK_WINDOW_MODE
 
   /* Iconified window mode, window is placed into a panel, dock
    * or any other implementation defined way to map the window
@@ -1006,7 +1009,13 @@ enum {
   UDESK_EVENT_LEAVE = 0x7c0e,
 #define UDESK_EVENT_LEAVE        UDESK_EVENT_LEAVE
 
-  UDESK_EVENT_TIMEOUT = 0x7c0f
+  UDESK_EVENT_FOCUS = 0x7c0f,
+#define UDESK_EVENT_FOCUS        UDESK_EVENT_FOCUS
+
+  UDESK_EVENT_DRAW = 0x7c10,
+#define UDESK_EVENT_DRAW         UDESK_EVENT_DRAW
+
+  UDESK_EVENT_TIMEOUT = 0x7c11
 #define UDESK_EVENT_TIMEOUT      UDESK_EVENT_TIMEOUT
 
 };

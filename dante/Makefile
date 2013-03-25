@@ -24,11 +24,11 @@ INSTALL = install
 
 # convenience macros:
 VERSION = 0.1
-SRC = context.c query.c
+SRC = context.c event.c query.c window.c
 HEADERS = dante.h
 LIBS = -lm
 BUILDFLAGS = ${CFLAGS} -pedantic -Wall -DVERSION=\"${VERSION}\" ${SDL2CFLAGS}
-LINKFLAGS = ${LDFLAGS} -s ${LIBS} ${SDL2LDFLAGS}
+LINKFLAGS = ${LDFLAGS} ${LIBS} ${SDL2LDFLAGS}
 OUTDIR = ${PREFIX}/${DESTDIR}/${LIBDIR}
 OBJ = ${SRC:.c=.o}
 LOBJ = ${SRC:.c=.lo}
@@ -66,7 +66,7 @@ dist: clean
 	@rm -rf dante-${VERSION}
 
 install: all
-	${LIBTOOL} --mode=install ${INSTALL} -s -c libdante.la ${OUTDIR}/libdante.la
+	${LIBTOOL} --mode=install ${INSTALL} -c libdante.la ${OUTDIR}/libdante.la
 
 uninstall:
 	${LIBTOOL} --mode=uninstall rm -f ${OUTDIR}/libdante.la

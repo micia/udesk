@@ -33,25 +33,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Defines how many slots should be reserved for fast static
- * objects cache.
- */
-#define DANTE_FAST_OBJECT_CACHE_SIZE 128
-
 DanteContext* dante_context = NULL;
 
-/* This is the fast static cache buffer used for frequently
- * generated and deleted objects, such as events.
- * Handles are managed in the following way:
- * 
- * [1, DANTE_FAST_OBJECT_CACHE_SIZE] = static objects, have NULL slice field
- * [DANTE_FAST_OBJECT_CACHE_SIZE, ...] = slice memory allocation.
+/* Retrieves a value for the specified environment variable,
+ * if the environment variable has an invalid value or can't be found,
+ * the default value is returned.
  */
-static DanteObject dante_fast_cache[DANTE_FAST_OBJECT_CACHE_SIZE];
-/* Free static object cache list, if empty even frequently generated
- * object will fall back to slice memory.
- */
-static DanteObject* dante_cache_free = NULL;
+static UDboolean danteGetEnvVariable(const char* name, UDboolean defval)
+{
+	char* var = getenv(name);
+	
+	if (var && var[0] != '\0') {
+		long val = strtol(var, &var, 0);
+		
+		if (var[0] == '\0') {
+			/* value was valid */
+			return (val != 0l);
+		}
+	}
+	
+	return defval;
+}
 
 /* Walks the slice list finding the first empty slot, a new
  * slice is allocated into it, inizialized and returned.
@@ -72,6 +74,7 @@ static DanteSlice* danteAllocSlice(void)
 		return NULL;
 	}
 	
+	/* find a free handle set in the slice list */
 	prev = &dante_context->slice;
 	next = dante_context->slice.next;
 	base = DANTE_FAST_OBJECT_CACHE_SIZE + 1;
@@ -82,7 +85,7 @@ static DanteSlice* danteAllocSlice(void)
 		
 		prev = next;
 		next = next->next;
-		base += DANTE_SLICE_SIZE;
+		base += DANTE_SLICE_CACHESIZE;
 	}
 	
 	/* insert into the slice list */
@@ -98,11 +101,13 @@ static DanteSlice* danteAllocSlice(void)
 	
 	/* initialize the slice */
 	ret->base = base;
+	ret->used = 0;
 	ret->first_free = NULL;
 	for (i = 0; i < DANTE_SLICE_CACHESIZE; i++) {
 		DanteObject* obj = &ret->data[i];
 		
 		obj->type = UDESK_NONE;
+		obj->handle = base + i;
 		obj->slice = ret;
 		obj->d.none.next = ret->first_free;
 		ret->first_free = obj;
@@ -114,12 +119,12 @@ static DanteSlice* danteAllocSlice(void)
 DanteObject* danteAllocObject(UDenum type)
 {
 	DanteObject* obj = NULL;
-
+	
 	if (type == UDESK_HANDLE_EVENT) {
 		/* try to allocate into fast cache */
-		obj = dante_cache_free;
+		obj = dante_context->cache_free;
 		if (obj) {
-			dante_cache_free = obj->d.none.next;
+			dante_context->cache_free = obj->d.none.next;
 		}
 	}
 	
@@ -127,7 +132,7 @@ DanteObject* danteAllocObject(UDenum type)
 		/* allocate into slice managed memory */
 		DanteSlice* slice = dante_context->slice.next_free;
 		
-		if (!slice) {
+		if (slice->base == UDESK_HANDLE_NONE) {
 			/* no free slices left, allocate a new one */
 			slice = danteAllocSlice();
 			if (!slice) {
@@ -138,20 +143,28 @@ DanteObject* danteAllocObject(UDenum type)
 		obj = slice->first_free;
 		slice->first_free = obj->d.none.next;
 		slice->used++;
-		if (slice->used == DANTE_SLICE_SIZE) {
+		if (slice->used == DANTE_SLICE_CACHESIZE) {
 			/* slice is full, remove from free list */
-			dante_context->slice.next_free = slice->next_free;
-			dante_context->slice.prev_free = slice->prev_free;
+			slice->next_free->prev_free = slice->prev_free;
+			slice->prev_free->next_free = slice->next_free;
 		}
 	}
 	
+	/* initialize the object common fields */
 	obj->type = type;
+	obj->refs = 1;
+	obj->vt = NULL;
+	obj->dispatch = NULL;
+	obj->parent = NULL;
+	memset(&obj->d, 0, sizeof(obj->d));
 	return obj;
 }
 
 DanteObject* danteGetObject(UDhandle handle)
-{
-	if (handle <= 0) {
+{	
+	DanteObject* obj;
+
+	if (handle <= UDESK_HANDLE_NONE) {
 		return NULL;
 	}
 	
@@ -160,7 +173,7 @@ DanteObject* danteGetObject(UDhandle handle)
 		DanteSlice* slice;
 	
 		for (slice = dante_context->slice.next; slice->base != UDESK_HANDLE_NONE; slice = slice->next) {
-			if (handle < slice->base + DANTE_SLICE_SIZE) {
+			if (handle < slice->base + DANTE_SLICE_CACHESIZE) {
 				break;
 			}
 		}
@@ -169,42 +182,17 @@ DanteObject* danteGetObject(UDhandle handle)
 			return NULL;
 		}
 		
-		return &slice->data[handle - slice->base];
+		obj = &slice->data[handle - slice->base];
 		
 	} else {
 		/* object belongs to the fast cache */
-		DanteObject* obj = &dante_fast_cache[handle - 1];
-		
-		return (obj->type != UDESK_NONE)? obj : NULL;
+		obj = &dante_context->cache[handle - 1];
 	}
-}
-
-void danteFreeObject(DanteObject* obj)
-{
-	DanteSlice* slice = obj->slice;
 	
-	obj->type = UDESK_NONE;
-	if (slice) {
-		/* object belongs to slice managed memory */
-		obj->d.none.next = slice->first_free;
-		slice->first_free = obj;
-		slice->used--;
-		if (slice->used == 0) {
-			/* free the slice, give back memory to the OS */
-			slice->next_free->prev_free = slice->prev_free;
-			slice->prev_free->next_free = slice->next_free;
-			slice->next->prev = slice->prev;
-			slice->prev->next = slice->next;
-			free(slice);
-		}
-	} else {
-		/* object belongs to static fast cache */
-		obj->d.none.next = dante_cache_free;
-		dante_cache_free = obj;
-	}
+	return (obj->type != UDESK_NONE)? obj : NULL;
 }
 
-UDboolean udeskCheckObjectType(UDhandle handle, UDenum type)
+UDboolean danteCheckObjectType(UDhandle handle, UDenum type)
 {
 	DanteObject* obj;
 	
@@ -215,7 +203,62 @@ UDboolean udeskCheckObjectType(UDhandle handle, UDenum type)
 		return false;
 	}
 	
-	return obj->type == type;
+	return (obj->type == type);
+}
+
+DanteObject* danteRetrieveObject(UDhandle handle, UDenum type)
+{
+	DanteObject* obj;
+	
+	DANTE_IGNORE_AND_RETVAL_IF(!dante_context, NULL);
+	
+	obj = danteGetObject(handle);
+	DANTE_ERROR_AND_RETVAL_IF(!obj, UDESK_INVALID_VALUE, NULL);
+	DANTE_ERROR_AND_RETVAL_IF(obj->type != type, UDESK_INVALID_VALUE, NULL);
+	return obj;
+}
+
+void danteRefObject(DanteObject* obj)
+{
+	if (obj) {
+		obj->refs++;
+	}
+}
+
+void danteUnrefObject(DanteObject* obj)
+{
+	if (obj) {
+		obj->refs--;
+		if (obj->refs == 0) {
+			DanteSlice* slice = obj->slice;
+	
+			/* partially initialized objects may lack a virtual table */
+			if (obj->vt && obj->vt->clear) {
+				obj->vt->clear(obj);
+			}
+			
+			obj->type = UDESK_NONE;
+			if (slice) {
+				/* object belongs to slice managed memory */
+				obj->d.none.next = slice->first_free;
+				slice->first_free = obj;
+				slice->used--;
+				if (slice->used == 0) {
+					/* free the slice, give back memory to the OS */
+					slice->next_free->prev_free = slice->prev_free;
+					slice->prev_free->next_free = slice->next_free;
+					slice->next->prev = slice->prev;
+					slice->prev->next = slice->next;
+					free(slice);
+				}
+				
+			} else {
+				/* object belongs to static fast cache */
+				obj->d.none.next = dante_context->cache_free;
+				dante_context->cache_free = obj;
+			}
+		}
+	}
 }
 
 UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
@@ -226,14 +269,21 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 	DANTE_IGNORE_AND_RETVAL_IF(!argc || !argv || *argc <= 0 || !*argv[0], UDESK_INVALID_VALUE);
 	DANTE_IGNORE_AND_RETVAL_IF(dante_context, UDESK_INVALID_OPERATION);
 	
+	/* initialize SDL */
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE) != 0) {
+		return UDESK_OPERATION_FAILED;
+	}
+	
+	/* initialize context */
 	ctx = (DanteContext*)malloc(sizeof(*ctx));
 	if (!ctx) {
 		return UDESK_OUT_OF_MEMORY;
 	}
 	
-	/* initialize context */
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->error = UDESK_NO_ERROR;
+	ctx->vsync = danteGetEnvVariable(DANTE_ENV_VSYNC, true);
+	ctx->accelerated = danteGetEnvVariable(DANTE_ENV_ACCELERATED, true);
 	ctx->slice.base = UDESK_HANDLE_NONE;
 	ctx->slice.used = 0;
 	ctx->slice.next = &ctx->slice;
@@ -242,12 +292,12 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 	ctx->slice.prev_free = &ctx->slice;
 	
 	/* initialize the fast cache */
-	dante_cache_free = NULL;
 	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
-		dante_fast_cache[i].type = UDESK_NONE;
-		dante_fast_cache[i].slice = NULL;
-		dante_fast_cache[i].d.none.next = dante_cache_free;
-		dante_cache_free = &dante_fast_cache[i];
+		ctx->cache[i].type = UDESK_NONE;
+		ctx->cache[i].handle = 1 + i;
+		ctx->cache[i].slice = NULL;
+		ctx->cache[i].d.none.next = ctx->cache_free;
+		ctx->cache_free = &ctx->cache[i];
 	}
 	
 	dante_context = ctx;
@@ -256,24 +306,56 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 
 void UDESKAPIENTRY udeskGenObjects(UDenum type, UDint num, UDhandle* dst)
 {
+	UDint i;
+	
 	DANTE_IGNORE_IF(!dante_context);
 	DANTE_ERROR_IF(num < 0 || dst == NULL, UDESK_INVALID_VALUE);
 	
-	switch (type) {
-	case UDESK_HANDLE_WINDOW:
-	case UDESK_HANDLE_CONTAINER:
-	case UDESK_HANDLE_PIXMAP:
-	case UDESK_HANDLE_LAYER:
-	case UDESK_HANDLE_BAR:
-	case UDESK_HANDLE_MENU:
-	case UDESK_HANDLE_EVENT:
-	case UDESK_HANDLE_TIMER:
-		/* TODO: STUB! Implement this. */
-		break;
+	/* this isn't really the most optimized loop around...
+	 * but at least it's simple
+	 */
+	i = 0;
+	while (i < num) {
+		DanteObject* obj = danteAllocObject(type);
+		UDboolean success = false;
+		
+		if (obj) {
+			dst[i++] = obj->handle;
+			
+			switch (type) {
+			case UDESK_HANDLE_CONTAINER:
+			case UDESK_HANDLE_PIXMAP:
+			case UDESK_HANDLE_LAYER:
+			case UDESK_HANDLE_BAR:
+			case UDESK_HANDLE_MENU:
+			case UDESK_HANDLE_TIMER:
+				/* TODO: STUB! Implement this. */
+				break;
+			
+			case UDESK_HANDLE_WINDOW:
+				success = danteWindowInit(obj);
+				break;
+			
+			case UDESK_HANDLE_EVENT:
+				success = danteEventInit(obj);
+				break;
 	
-	default:
-		dante_context->error = UDESK_INVALID_ENUM;
-		return;
+			default:
+				/* can only fail on first iteration */
+				dante_context->error = UDESK_INVALID_ENUM;
+				break;
+			}
+		
+		} else {
+			/* object allocation failed */
+			dante_context->error = UDESK_OUT_OF_MEMORY;
+		}
+		
+		if (!success) {
+			/* free every object allocated this far */
+			udeskDeleteObjects(i, dst);
+			return;
+		}
 	}
 }
 
@@ -285,10 +367,7 @@ void UDESKAPIENTRY udeskDeleteObjects(UDint num, const UDhandle* buff)
 	DANTE_ERROR_IF(num < 0 || buff == NULL, UDESK_INVALID_VALUE);
 	
 	for (i = 0; i < num; i++) {
-		DanteObject* obj = danteGetObject(buff[i]);
-		if (obj) {
-			danteFreeObject(obj);
-		}
+		danteUnrefObject(danteGetObject(buff[i]));
 	}
 }
 
@@ -304,37 +383,125 @@ UDenum UDESKAPIENTRY udeskGetError(void)
 	return err;
 }
 
+void UDESKAPIENTRY udeskRegisterHandler(UDhandle handle, UDenum param, UDhandlerproc proc)
+{
+	DanteObject* obj;
+	
+	DANTE_IGNORE_IF(!dante_context);
+	
+	obj = danteGetObject(handle);
+	DANTE_ERROR_IF(!obj, UDESK_INVALID_VALUE);
+	DANTE_ERROR_IF(!obj->vt->handler, UDESK_INVALID_OPERATION);
+	
+	obj->vt->handler(obj, param, proc);
+}
+
+void UDESKAPIENTRY udeskBegin(UDhandle handle, UDenum mode)
+{
+	DanteObject* obj;
+	
+	DANTE_IGNORE_IF(!dante_context);
+	
+	obj = danteGetObject(handle);
+	DANTE_ERROR_IF(!obj, UDESK_INVALID_VALUE);
+	DANTE_ERROR_IF(!obj->vt->begin, UDESK_INVALID_OPERATION);
+	
+	obj->vt->begin(obj, mode);
+}
+
+void UDESKAPIENTRY udeskEnd(UDhandle handle)
+{
+	DanteObject* obj;
+	
+	DANTE_IGNORE_IF(!dante_context);
+	
+	obj = danteGetObject(handle);
+	DANTE_ERROR_IF(!obj, UDESK_INVALID_VALUE);
+	DANTE_ERROR_IF(!obj->vt->end, UDESK_INVALID_OPERATION);
+	
+	obj->vt->end(obj);
+}
+
+void UDESKAPIENTRY udeskFlush(UDhandle handle)
+{
+	DanteObject* obj;
+	
+	DANTE_IGNORE_IF(!dante_context);
+	
+	obj = danteGetObject(handle);
+	DANTE_ERROR_IF(!obj, UDESK_INVALID_VALUE);
+	
+	if (obj->vt->flush) {
+		obj->vt->flush(obj);
+	}
+}
+
+void UDESKAPIENTRY udeskMakeContextCurrent(void)
+{
+	SDL_Event ev;
+	
+	DANTE_IGNORE_IF(!dante_context);
+	DANTE_ERROR_IF(dante_context->current, UDESK_INVALID_OPERATION);
+	
+	dante_context->current = true;
+	do {
+		if (SDL_WaitEvent(&ev)) {
+			switch (ev.type) {
+			/* window event */
+			case SDL_WINDOWEVENT:
+				danteHandleWindowEvent(&ev);
+				break;
+			
+			default:
+				break;
+			}
+		}
+		
+	} while (dante_context->current);
+}
+
+void UDESKAPIENTRY udeskMakeContextNone(void)
+{
+	DANTE_IGNORE_IF(!dante_context);
+	DANTE_ERROR_IF(!dante_context->current, UDESK_INVALID_OPERATION);
+	
+	dante_context->current = false;
+}
+
 UDenum UDESKAPIENTRY udeskDestroyContext(void)
 {	
+	DanteSlice *slice;
 	UDint i;
 	
 	DANTE_IGNORE_AND_RETVAL_IF(!dante_context, UDESK_INVALID_OPERATION);
 	
-	while (dante_context->slice.next->base != UDESK_HANDLE_NONE) {
-		DanteSlice* slice;
+	slice = dante_context->slice.next;
+	while (slice->base != UDESK_HANDLE_NONE) {
+		DanteSlice* next = slice->next;
 		
-		slice = dante_context->slice.next;
 		for (i = 0; i < DANTE_SLICE_CACHESIZE; i++) {
 			DanteObject* obj = &slice->data[i];
 			
 			if (obj->type != UDESK_NONE) {
-				danteFreeObject(obj);
+				danteUnrefObject(obj);
 			}
 		}
 		
 		/* slice is freed when empty */
+		slice = next;
 	}
 	
 	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
-		DanteObject* obj = &dante_fast_cache[i];
+		DanteObject* obj = &dante_context->cache[i];
 		
 		if (obj->type != UDESK_NONE) {
-			danteFreeObject(obj);
+			danteUnrefObject(obj);
 		}
 	}
 	
 	free(dante_context);
+	SDL_Quit();
+	
 	dante_context = NULL;
-	dante_cache_free = NULL;
 	return UDESK_NO_ERROR;
 }
