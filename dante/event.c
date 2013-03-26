@@ -71,7 +71,7 @@ static UDint danteGetEventTimestamp(const SDL_Event* ev)
 		stamp = ev->text.timestamp;
 		break;
 	
-    case SDL_MOUSEMOTION:
+	case SDL_MOUSEMOTION:
 		stamp = ev->motion.timestamp;
 		break;
 	
@@ -116,7 +116,7 @@ static UDint danteGetEventTimestamp(const SDL_Event* ev)
 		stamp = ev->tfinger.timestamp;
 		break;
 	
-    case SDL_DOLLARGESTURE:
+	case SDL_DOLLARGESTURE:
 	case SDL_DOLLARRECORD:
 		stamp = ev->dgesture.timestamp;
 		break;
@@ -129,7 +129,7 @@ static UDint danteGetEventTimestamp(const SDL_Event* ev)
 		stamp = ev->drop.timestamp;
 		break;
 	
-    case SDL_USEREVENT:
+	case SDL_USEREVENT:
 		stamp = ev->user.timestamp;
 		break;
 	
