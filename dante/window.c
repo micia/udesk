@@ -146,7 +146,7 @@ static void danteWindowFocusHandler(DanteObject* obj, DanteDispatchID id, DanteO
 }
 
 static void danteWindowDrawHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev)
-{	
+{
 	DanteWindowObject* win = &obj->d.win;
 	DanteObject* child = win->child;
 	
