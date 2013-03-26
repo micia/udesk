@@ -429,15 +429,36 @@ void UDESKAPIENTRY udeskEnd(UDhandle handle)
 
 void UDESKAPIENTRY udeskFlush(UDhandle handle)
 {
-	DanteObject* obj;
-	
 	DANTE_IGNORE_IF(!dante_context);
 	
-	obj = danteGetObject(handle);
-	DANTE_ERROR_IF(!obj, UDESK_INVALID_VALUE);
-	
-	if (obj->vt->flush) {
-		obj->vt->flush(obj);
+	if (handle != UDESK_HANDLE_NONE) {
+		DanteObject* obj = danteGetObject(handle);
+		
+		DANTE_ERROR_IF(!obj, UDESK_INVALID_VALUE);
+		
+		if (obj->vt->flush) {
+			obj->vt->flush(obj);
+		}
+		
+	} else {
+		DanteSlice* slice;
+		DanteObject* obj;
+		UDint i;
+		
+		for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
+			obj = &dante_context->cache[i];
+			if (obj->type != UDESK_NONE && obj->vt->flush) {
+				obj->vt->flush(obj);
+			}
+		}
+		for (slice = dante_context->slice.next; slice->base != UDESK_HANDLE_NONE; slice = slice->next) {
+			for (i = 0; i < DANTE_SLICE_CACHESIZE; i++) {
+				obj = &slice->data[i];
+				if (obj->type != UDESK_NONE && obj->vt->flush) {
+					obj->vt->flush(obj);
+				}
+			}
+		}
 	}
 }
 
