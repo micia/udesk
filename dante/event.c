@@ -212,7 +212,8 @@ void DANTEAPIENTRY dantePropagateEvent(DanteDispatchID id, DanteObject* from, Da
 	}
 }
 
-void DANTEAPIENTRY danteFinishEvent(void) {
+void DANTEAPIENTRY danteFinishEvent(void)
+{
 	if (dante_context->ev) {
 		danteUnrefObject(dante_context->ev);
 		dante_context->ev = NULL;
