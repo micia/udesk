@@ -328,11 +328,7 @@ UDhandle UDESKAPIENTRY udeskGetEventHandle(UDhandle event, UDenum param)
 	
 	switch (param) {
 	case UDESK_EVENT_SENDER:
-		if (ev->from) {
-			return ev->from->handle;
-		} else {
-			return UDESK_HANDLE_NONE;
-		}
+		return (ev->from)? ev->from->handle : UDESK_HANDLE_NONE;
 	
 	case UDESK_EVENT_DESTINATION:
 		return ev->to->handle;
