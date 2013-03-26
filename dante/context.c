@@ -164,9 +164,9 @@ DanteObject* DANTEAPIENTRY danteAllocObject(UDenum type)
 }
 
 DanteObject* DANTEAPIENTRY danteGetObject(UDhandle handle)
-{	
+{
 	DanteObject* obj;
-
+	
 	if (handle <= UDESK_HANDLE_NONE) {
 		return NULL;
 	}
@@ -344,13 +344,13 @@ void UDESKAPIENTRY udeskGenObjects(UDenum type, UDint num, UDhandle* dst)
 			case UDESK_HANDLE_EVENT:
 				success = danteEventInit(obj);
 				break;
-	
+			
 			default:
 				/* can only fail on first iteration */
 				dante_context->error = UDESK_INVALID_ENUM;
 				break;
 			}
-		
+			
 		} else {
 			/* object allocation failed */
 			dante_context->error = UDESK_OUT_OF_MEMORY;
@@ -474,7 +474,7 @@ void UDESKAPIENTRY udeskMakeContextNone(void)
 }
 
 UDenum UDESKAPIENTRY udeskDestroyContext(void)
-{	
+{
 	DanteSlice *slice;
 	UDint i;
 	
