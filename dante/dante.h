@@ -421,8 +421,9 @@ DANTEAPI UDboolean DANTEAPIENTRY danteCheckObjectType(UDhandle handle, UDenum ty
 DANTEAPI DanteObject* DANTEAPIENTRY danteRetrieveObject(UDhandle handle, UDenum type);
 /* Adds a reference to the specified object, if 'obj' is NULL this
  * function has no effect.
+ * The function returns its argument for convenience purposes.
  */
-DANTEAPI void DANTEAPIENTRY danteRefObject(DanteObject* obj);
+DANTEAPI DanteObject* DANTEAPIENTRY danteRefObject(DanteObject* obj);
 /* Decreases reference count for the specified object, if 'obj' is NULL
  * this function has no effect.
  * Once the reference count reaches zero, the object is deallocated

@@ -221,11 +221,13 @@ DanteObject* DANTEAPIENTRY danteRetrieveObject(UDhandle handle, UDenum type)
 	return obj;
 }
 
-void DANTEAPIENTRY danteRefObject(DanteObject* obj)
+DanteObject* DANTEAPIENTRY danteRefObject(DanteObject* obj)
 {
 	if (obj) {
 		obj->refs++;
 	}
+	
+	return obj;
 }
 
 void DANTEAPIENTRY danteUnrefObject(DanteObject* obj)
