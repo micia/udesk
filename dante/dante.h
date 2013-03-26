@@ -346,8 +346,8 @@ typedef struct DanteContext_s {
 	 * generated and deleted objects, such as events.
 	 * Handles are managed in the following way:
 	 * 
-	 * [1, DANTE_FAST_OBJECT_CACHE_SIZE] = static objects, have NULL slice field
-	 * [DANTE_FAST_OBJECT_CACHE_SIZE, ...] = slice memory allocation.
+	 * [1, DANTE_FAST_CACHESIZE] = static objects, have NULL slice field
+	 * [DANTE_FAST_CACHESIZE, ...] = slice memory allocation.
 	 */
 	DanteObject cache[DANTE_FAST_CACHESIZE];
 } DanteContext;
