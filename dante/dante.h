@@ -309,7 +309,7 @@ typedef struct DanteSlice_s {
 /* Defines how many slots should be reserved for fast static
  * objects cache.
  */
-#define DANTE_FAST_OBJECT_CACHE_SIZE 128
+#define DANTE_FAST_CACHESIZE 128
 
 /* DanteContext defines the context type. According to udesk,
  * this type manages every object allocated with udeskGenObjects(),
@@ -349,7 +349,7 @@ typedef struct DanteContext_s {
 	 * [1, DANTE_FAST_OBJECT_CACHE_SIZE] = static objects, have NULL slice field
 	 * [DANTE_FAST_OBJECT_CACHE_SIZE, ...] = slice memory allocation.
 	 */
-	DanteObject cache[DANTE_FAST_OBJECT_CACHE_SIZE];
+	DanteObject cache[DANTE_FAST_CACHESIZE];
 } DanteContext;
 
 /* Global dante context handle, NULL if no context has been

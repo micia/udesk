@@ -80,7 +80,7 @@ static DanteSlice* danteAllocSlice(void)
 	/* find a free handle set in the slice list */
 	prev = &dante_context->slice;
 	next = dante_context->slice.next;
-	base = DANTE_FAST_OBJECT_CACHE_SIZE + 1;
+	base = DANTE_FAST_CACHESIZE + 1;
 	while (next->base != UDESK_HANDLE_NONE) {
 		if (next->base != base) {
 			break;
@@ -171,7 +171,7 @@ DanteObject* DANTEAPIENTRY danteGetObject(UDhandle handle)
 		return NULL;
 	}
 	
-	if (handle > DANTE_FAST_OBJECT_CACHE_SIZE) {
+	if (handle > DANTE_FAST_CACHESIZE) {
 		/* search into the slice managed memory */
 		DanteSlice* slice;
 	
@@ -297,7 +297,7 @@ UDenum UDESKAPIENTRY udeskCreateContext(int* argc, char** argv[])
 	ctx->slice.prev_free = &ctx->slice;
 	
 	/* initialize the fast cache */
-	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
+	for (i = 0; i < DANTE_FAST_CACHESIZE; i++) {
 		ctx->cache[i].type = UDESK_NONE;
 		ctx->cache[i].handle = 1 + i;
 		ctx->cache[i].slice = NULL;
@@ -445,7 +445,7 @@ void UDESKAPIENTRY udeskFlush(UDhandle handle)
 		DanteObject* obj;
 		UDint i;
 		
-		for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
+		for (i = 0; i < DANTE_FAST_CACHESIZE; i++) {
 			obj = &dante_context->cache[i];
 			if (obj->type != UDESK_NONE && obj->vt->flush) {
 				obj->vt->flush(obj);
@@ -517,7 +517,7 @@ UDenum UDESKAPIENTRY udeskDestroyContext(void)
 		slice = next;
 	}
 	
-	for (i = 0; i < DANTE_FAST_OBJECT_CACHE_SIZE; i++) {
+	for (i = 0; i < DANTE_FAST_CACHESIZE; i++) {
 		DanteObject* obj = &dante_context->cache[i];
 		
 		if (obj->type != UDESK_NONE) {
