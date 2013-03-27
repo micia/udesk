@@ -75,12 +75,12 @@ static SDL_Renderer* danteCreateWindowRenderer(SDL_Window* window)
 	}
 	
 	ret = SDL_CreateRenderer(window, -1, flags);
-	if (!ret && (flags & SDL_RENDERER_ACCELERATED) != 0) {
+	if (!ret && (flags & SDL_RENDERER_ACCELERATED)) {
 		flags &= ~SDL_RENDERER_ACCELERATED;
 		flags |= SDL_RENDERER_SOFTWARE;
 		ret = SDL_CreateRenderer(window, -1, flags);
 	}
-	if (!ret && (flags & SDL_RENDERER_PRESENTVSYNC) != 0) {
+	if (!ret && (flags & SDL_RENDERER_PRESENTVSYNC)) {
 		flags &= ~SDL_RENDERER_PRESENTVSYNC;
 		ret = SDL_CreateRenderer(window, -1, flags);
 	}
@@ -411,11 +411,11 @@ void UDESKAPIENTRY udeskGetWindowiv(UDhandle window, UDenum param, UDint* dst)
 		
 		case UDESK_WINDOW_MODE:
 			flags = SDL_GetWindowFlags(win->swin);
-			if ((flags & SDL_WINDOW_HIDDEN) != 0) {
+			if (flags & SDL_WINDOW_HIDDEN) {
 				dst[0] = UDESK_WINDOW_HIDDEN;
-			} else if ((flags & SDL_WINDOW_MINIMIZED) != 0) {
+			} else if (flags & SDL_WINDOW_MINIMIZED) {
 				dst[0] = UDESK_WINDOW_ICONIFIED;
-			} else if ((flags & SDL_WINDOW_MAXIMIZED) != 0) {
+			} else if (flags & SDL_WINDOW_MAXIMIZED) {
 				dst[0] = UDESK_WINDOW_MAXIMIZED;
 			} else {
 				dst[0] = UDESK_WINDOW_SHOW;
@@ -425,7 +425,7 @@ void UDESKAPIENTRY udeskGetWindowiv(UDhandle window, UDenum param, UDint* dst)
 		
 		case UDESK_WINDOW_DECORATE:
 			flags = SDL_GetWindowFlags(win->swin);
-			dst[0] = ((flags & SDL_WINDOW_BORDERLESS) != 0);
+			dst[0] = DANTE_BOOL(flags & SDL_WINDOW_BORDERLESS);
 			break;
 		
 		default:

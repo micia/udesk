@@ -200,7 +200,7 @@ void DANTEAPIENTRY dantePropagateEvent(DanteDispatchID id, DanteObject* from, Da
 	if (obj) {
 		if (to->dispatch) {
 			DanteHandlerproc handler = DANTE_DISPATCH_HANDLER(to->dispatch, id);
-		
+			
 			if (handler) {
 				DanteEventObject* ev = &obj->d.ev;
 				
@@ -243,7 +243,7 @@ void DANTEAPIENTRY danteHandleWindowEvent(const SDL_Event* ev)
 		danteGenerateFrom(ev, UDESK_EVENT_ENTER);
 		dantePropagateEvent(DANTE_ENTER_DISPATCH_ID, NULL, to);
 		break;
-		
+	
 	case SDL_WINDOWEVENT_LEAVE:
 		danteGenerateFrom(ev, UDESK_EVENT_LEAVE);
 		dantePropagateEvent(DANTE_LEAVE_DISPATCH_ID, NULL, to);
