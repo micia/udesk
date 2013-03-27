@@ -88,7 +88,7 @@ static SDL_Renderer* danteCreateWindowRenderer(SDL_Window* window)
 	return ret;
 }
 
-static void danteSetWindowMode(SDL_Window* win, UDenum mode)
+static void danteSetWindowMode(SDL_Window* win, UDint mode)
 {
 	switch (mode) {
 	case UDESK_WINDOW_HIDDEN:
@@ -317,7 +317,7 @@ void UDESKAPIENTRY udeskSetWindowiv(UDhandle window, UDenum param, const UDint* 
 		
 		switch (param) {
 		case UDESK_WINDOW_MODE:
-			danteSetWindowMode(win->swin, (UDenum)to[0]);
+			danteSetWindowMode(win->swin, to[0]);
 			break;
 		
 		default:
