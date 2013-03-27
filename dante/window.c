@@ -319,7 +319,7 @@ void UDESKAPIENTRY udeskSetWindowiv(UDhandle window, UDenum param, const UDint* 
 		case UDESK_WINDOW_MODE:
 			danteSetWindowMode(win->swin, (UDenum)to[0]);
 			break;
-			
+		
 		default:
 			dante_context->error = UDESK_INVALID_ENUM;
 			break;
@@ -381,7 +381,7 @@ const char* UDESKAPIENTRY udeskGetWindowString(UDhandle window, UDenum param)
 	switch (param) {
 	case UDESK_WINDOW_TITLE:
 		return SDL_GetWindowTitle(obj->d.win.swin);
-		
+	
 	default:
 		dante_context->error = UDESK_INVALID_ENUM;
 		return NULL;
@@ -390,8 +390,26 @@ const char* UDESKAPIENTRY udeskGetWindowString(UDhandle window, UDenum param)
 
 UDhandle UDESKAPIENTRY udeskGetWindowHandle(UDhandle window, UDenum param)
 {
-	/* TODO stub */
-	return UDESK_HANDLE_NONE;
+	DanteObject* obj;
+	DanteWindowObject* win;
+	
+	obj = danteRetrieveObject(window, UDESK_HANDLE_WINDOW);
+	if (!obj) {
+		return UDESK_HANDLE_NONE;
+	}
+	
+	win = &obj->d.win;
+	switch (param) {
+	case UDESK_WINDOW_ICON:
+		return (win->icon)? win->icon->handle : UDESK_HANDLE_NONE;
+	
+	case UDESK_WINDOW_CHILD:
+		return (win->child)? win->child->handle : UDESK_HANDLE_NONE;
+	
+	default:
+		dante_context->error = UDESK_INVALID_ENUM;
+		return UDESK_HANDLE_NONE;
+	}
 }
 
 UDboolean UDESKAPIENTRY udeskIsWindow(UDhandle handle)
