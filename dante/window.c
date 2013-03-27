@@ -48,7 +48,7 @@ static SDL_Renderer* danteCreateWindowRenderer(SDL_Window* window);
 /* Maps the window as specified by the 'mode' parameter,
  * sets the context error accordingly on failure or invalid mode.
  */
-static void danteSetWindowMode(SDL_Window* win, UDenum mode);
+static void danteSetWindowMode(SDL_Window* win, UDint mode);
 /* Window event dispatch table handlers. */
 static void danteWindowEnterHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
 static void danteWindowLeaveHandler(DanteObject* obj, DanteDispatchID id, DanteObject* ev);
@@ -254,7 +254,7 @@ UDboolean DANTEAPIENTRY danteWindowInit(DanteObject* obj)
 	SDL_Renderer* render = NULL;
 	
 	swin = SDL_CreateWindow(DANTE_WINDOW_TITLE, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-	                        DANTE_WINDOW_WIDTH, DANTE_WINDOW_HEIGHT, SDL_WINDOW_HIDDEN);
+	                        DANTE_WINDOW_WIDTH, DANTE_WINDOW_HEIGHT, SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE);
 	if (!swin) {
 		dante_context->error = UDESK_OPERATION_FAILED;
 		goto fail;
@@ -274,6 +274,7 @@ UDboolean DANTEAPIENTRY danteWindowInit(DanteObject* obj)
 	obj->dispatch = &dispatch_table;
 	win->swin = swin;
 	win->render = render;
+	win->resizable = true;
 	return true;
 
 fail:
@@ -315,9 +316,41 @@ void UDESKAPIENTRY udeskSetWindowiv(UDhandle window, UDenum param, const UDint* 
 	if (obj) {
 		DanteWindowObject* win = &obj->d.win;
 		
+		DANTE_ERROR_IF(!to, UDESK_INVALID_VALUE);
+		
 		switch (param) {
+		case UDESK_WINDOW_POSITION:
+			DANTE_ERROR_IF(to[0] < 0 || to[1] < 0, UDESK_INVALID_VALUE);
+			SDL_SetWindowPosition(win->swin, to[0], to[1]);
+			break;
+		
+		case UDESK_WINDOW_SIZE:
+			DANTE_ERROR_IF(to[0] < 1 || to[1] < 1, UDESK_INVALID_VALUE);
+			SDL_SetWindowSize(win->swin, to[0], to[1]);
+			break;
+		
+		case UDESK_WINDOW_RESIZE:
+			if (win->resizable != DANTE_BOOL(to[0])) {
+				int w = 0;
+				int h = 0;
+				
+				if (DANTE_BOOL(to[0])) {
+					SDL_GetWindowSize(win->swin, &w, &h);
+				}
+				
+				SDL_SetWindowMinimumSize(win->swin, w, h);
+				SDL_SetWindowMaximumSize(win->swin, w, h);
+				win->resizable = DANTE_BOOL(to[0]);
+			}
+			
+			break;
+		
 		case UDESK_WINDOW_MODE:
 			danteSetWindowMode(win->swin, to[0]);
+			break;
+		
+		case UDESK_WINDOW_DECORATE:
+			SDL_SetWindowBordered(win->swin, DANTE_BOOL(to[0]));
 			break;
 		
 		default:
@@ -348,7 +381,58 @@ void UDESKAPIENTRY udeskSetWindowf(UDhandle window, UDenum param, UDfloat f)
 
 void UDESKAPIENTRY udeskGetWindowiv(UDhandle window, UDenum param, UDint* dst)
 {
-	/* TODO stub */
+	DanteObject* obj = danteRetrieveObject(window, UDESK_HANDLE_WINDOW);
+	
+	if (obj) {
+		DanteWindowObject* win;
+		Uint32 flags;
+		int x;
+		int y;
+		
+		DANTE_ERROR_IF(!dst, UDESK_INVALID_VALUE);
+		
+		win = &obj->d.win;
+		switch (param) {
+		case UDESK_WINDOW_POSITION:
+			SDL_GetWindowPosition(win->swin, &x, &y);
+			dst[0] = x;
+			dst[1] = y;
+			break;
+		
+		case UDESK_WINDOW_SIZE:
+			SDL_GetWindowSize(win->swin, &x, &y);
+			dst[0] = x;
+			dst[1] = y;
+			break;
+		
+		case UDESK_WINDOW_RESIZE:
+			dst[0] = win->resizable;
+			break;
+		
+		case UDESK_WINDOW_MODE:
+			flags = SDL_GetWindowFlags(win->swin);
+			if ((flags & SDL_WINDOW_HIDDEN) != 0) {
+				dst[0] = UDESK_WINDOW_HIDDEN;
+			} else if ((flags & SDL_WINDOW_MINIMIZED) != 0) {
+				dst[0] = UDESK_WINDOW_ICONIFIED;
+			} else if ((flags & SDL_WINDOW_MAXIMIZED) != 0) {
+				dst[0] = UDESK_WINDOW_MAXIMIZED;
+			} else {
+				dst[0] = UDESK_WINDOW_SHOW;
+			}
+			
+			break;
+		
+		case UDESK_WINDOW_DECORATE:
+			flags = SDL_GetWindowFlags(win->swin);
+			dst[0] = ((flags & SDL_WINDOW_BORDERLESS) != 0);
+			break;
+		
+		default:
+			dante_context->error = UDESK_INVALID_ENUM;
+			break;
+		}
+	}
 }
 
 void UDESKAPIENTRY udeskSetWindowString(UDhandle window, UDenum param, const char* to)
@@ -361,11 +445,11 @@ void UDESKAPIENTRY udeskSetWindowString(UDhandle window, UDenum param, const cha
 		switch (param) {
 		case UDESK_WINDOW_TITLE:
 			SDL_SetWindowTitle(obj->d.win.swin, to);
-			return;
+			break;
 		
 		default:
 			dante_context->error = UDESK_INVALID_ENUM;
-			return;
+			break;
 		}
 	}
 }

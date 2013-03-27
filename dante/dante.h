@@ -80,6 +80,9 @@ extern "C" {
 
 #endif
 
+/* Convenience safe macro, performs arbitrary integer type to bool conversion. */
+#define DANTE_BOOL(integer) ((integer) != 0)
+
 #if (defined(__GNUC__) && __GNUC__ >= 4)
 /* optimize generated DLL by reducing the exported functions */
 #define DANTEAPI extern __attribute__((visibility("hidden")))
@@ -198,6 +201,8 @@ typedef struct DanteWindowObject_s {
 	struct DanteObject_s* icon;
 	/* window child, NULL if window has no child. */
 	struct DanteObject_s* child;
+	/* whether the window is resizeable or not. */
+	UDboolean resizable;
 	/* user defined enter event handler, might be NULL. */
 	UDhandlerproc enter;
 	/* user defined focus event handler, might be NULL. */
