@@ -224,7 +224,7 @@ static void danteWindowClear(DanteObject* obj)
 	danteUnrefObject(win->icon);
 	danteUnrefObject(win->child);
 	SDL_DestroyRenderer(win->render);
-	SDL_DestroyWindow(win->sdl_rc);
+	SDL_DestroyWindow(win->swin);
 }
 
 UDboolean DANTEAPIENTRY danteWindowInit(DanteObject* obj)
@@ -272,7 +272,7 @@ UDboolean DANTEAPIENTRY danteWindowInit(DanteObject* obj)
 	SDL_SetWindowData(swin, DANTE_WINDOW_OBJECT, obj);
 	obj->vt = &win_table;
 	obj->dispatch = &dispatch_table;
-	win->sdl_rc = swin;
+	win->swin = swin;
 	win->render = render;
 	return true;
 
@@ -317,7 +317,7 @@ void UDESKAPIENTRY udeskSetWindowiv(UDhandle window, UDenum param, const UDint* 
 		
 		switch (param) {
 		case UDESK_WINDOW_MODE:
-			danteSetWindowMode(win->sdl_rc, (UDenum)to[0]);
+			danteSetWindowMode(win->swin, (UDenum)to[0]);
 			break;
 			
 		default:
@@ -360,7 +360,7 @@ void UDESKAPIENTRY udeskSetWindowString(UDhandle window, UDenum param, const cha
 	
 		switch (param) {
 		case UDESK_WINDOW_TITLE:
-			SDL_SetWindowTitle(obj->d.win.sdl_rc, to);
+			SDL_SetWindowTitle(obj->d.win.swin, to);
 			return;
 		
 		default:
@@ -380,7 +380,7 @@ const char* UDESKAPIENTRY udeskGetWindowString(UDhandle window, UDenum param)
 	
 	switch (param) {
 	case UDESK_WINDOW_TITLE:
-		return SDL_GetWindowTitle(obj->d.win.sdl_rc);
+		return SDL_GetWindowTitle(obj->d.win.swin);
 		
 	default:
 		dante_context->error = UDESK_INVALID_ENUM;

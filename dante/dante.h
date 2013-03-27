@@ -191,7 +191,7 @@ typedef struct DanteNoneObject_s {
 /* Window object type. */
 typedef struct DanteWindowObject_s {
 	/* actual SDL window handler. */
-	SDL_Window* sdl_rc;
+	SDL_Window* swin;
 	/* SDL window renderer for 'sdl_rc'. */
 	SDL_Renderer* render;
 	/* window icon, NULL if default icon is used. */
